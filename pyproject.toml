@@ -1,0 +1,19 @@
+[project]
+name = "shave"
+version = "0.1.0"
+description = "Deterministic analysis of AiM Solo kart telemetry"
+requires-python = ">=3.12"
+dependencies = ["polars>=1.0"]
+
+[project.scripts]
+shave = "shave.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

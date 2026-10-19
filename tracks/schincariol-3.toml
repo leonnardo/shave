@@ -1,0 +1,11 @@
+name = "Itu (Schincariol), traçado 3"
+# Measured, not official: median of 66 complete laps, 2026-09-27.
+# The 1240 m published by CBA is traçado 1, not this one.
+expected_length_m = 1213
+length_tolerance_m = 20
+
+# Median of the logger's lap beacon crossings on 2026-09-27 (70 crossings, spread ~2 m).
+[finish_line]
+lat_deg = -23.248028
+lon_deg = -47.342057
+heading_deg = 257.4

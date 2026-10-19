@@ -1,0 +1,11 @@
+name = "Granja Viana, traçado 7"
+# Measured, not official: median of 24 complete laps, 2026-10-01.
+# No public length found per layout; the 1150 m quoted for KGV is not this layout.
+expected_length_m = 966
+length_tolerance_m = 20
+
+# Median of the logger's beacon crossings on 2026-10-01 (26 crossings, spread < 1 m).
+[finish_line]
+lat_deg = -23.604949
+lon_deg = -46.836279
+heading_deg = 342.4

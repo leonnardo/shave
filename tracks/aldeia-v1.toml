@@ -1,0 +1,13 @@
+name = "Aldeia da Serra (ADSv1 no AiM)"
+# Measured, not official: median of 62 complete laps, 2026-08-29.
+# GPS lap distance follows the driven line, so it differs from any official centerline figure.
+# No public length found for this layout.
+expected_length_m = 937
+length_tolerance_m = 20
+
+# The logger's line was wrong on 2026-08-29 (AUTO_TRACK). This is the
+# aldeia-v3 line from 2026-10-11, which the v1 layout also crosses (~1 m off its trace).
+[finish_line]
+lat_deg = -23.508334
+lon_deg = -46.931803
+heading_deg = 166.4

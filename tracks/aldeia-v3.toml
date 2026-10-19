@@ -1,0 +1,12 @@
+name = "Aldeia da Serra (ADSv3 no AiM)"
+# Measured, not official: median of 58 complete laps, 2026-10-11.
+# Close to the 1021 m published for the "Traçado Oficial" (motorlap.com/tracks/1098),
+# but that this is the same layout is unconfirmed.
+expected_length_m = 1016
+length_tolerance_m = 20
+
+# Median of the logger's beacon crossings on 2026-10-11 (62 crossings, spread < 1 m).
+[finish_line]
+lat_deg = -23.508334
+lon_deg = -46.931803
+heading_deg = 166.4

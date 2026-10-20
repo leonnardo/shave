@@ -13,7 +13,7 @@ from shave.aim import read_session
 from shave.geo import to_local
 from shave.laps import LapStatus, check_lap, split_laps
 from shave.reference import align_session, estimate_shift, load_reference_line, project_lap
-from shave.segments import segment_times
+from shave.segments import BRAKING_G, segment_times, station_profile
 from shave.tracks import load_track
 
 RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
@@ -184,16 +184,64 @@ def _segment_table(path, track_id):
 
 
 @pytest.mark.parametrize(("path", "track_id", "beacons_on_line"), FILES)
-def test_aligned_laps_start_on_the_line_and_their_segments_add_up(path, track_id, beacons_on_line):
-    rows = _segment_table(path, track_id)
+def test_aligned_session_needs_no_further_shift(path, track_id, beacons_on_line):
+    # A no-op or sign-flipped alignment would leave the shift (up to 2 m) or double it.
+    track = load_track(track_id)
+    line = load_reference_line(track)
+    aligned, _ = align_session(read_session(path), track, line)
+    valid = [lap for lap in split_laps(aligned, track)
+             if check_lap(lap, track).status == LapStatus.VALID]
 
-    assert rows
-    for lap, p, times in rows:
+    assert math.hypot(*estimate_shift(line, valid)) < 0.1
+
+
+# Distance over speed, from the GPS speed and distance channels, without the
+# time interpolation segment_times does. The distance channel is quantised to
+# 1 m, which limits agreement to ~0.15 s per segment.
+SPEED_CHECK_TOLERANCE_S = 0.2
+
+
+@pytest.mark.parametrize(("path", "track_id", "beacons_on_line"), FILES)
+def test_segment_times_agree_with_distance_over_speed(path, track_id, beacons_on_line):
+    segments = load_track(track_id).segments
+    for lap, p, times in _segment_table(path, track_id):
         # First sample past the line, at most one sample in; the finish line and
         # the reference line's vertex 0 agree to a few centimetres.
         assert -0.1 < p.station_m[0] < 1.5
-        assert sum(times) == pytest.approx(lap.time_s, abs=1e-6)
-        assert min(times) > 0.5
+
+        station = np.maximum.accumulate(p.station_m)
+        distance = lap.data["distance_m"].to_numpy()
+        speed = np.maximum(lap.data["speed_kmh"].to_numpy() / 3.6, 1.0)
+        bounds = [station[0], *[s.start_m for s in segments[1:]], station[-1]]
+        driven = np.interp(bounds, station, distance)
+        fine = np.linspace(distance[0], distance[-1], 20_000)
+        elapsed = np.concatenate([[0.0], np.cumsum(np.diff(fine) / np.interp(fine, distance, speed)[1:])])
+        expected = np.diff(np.interp(driven, fine, elapsed))
+
+        assert times == pytest.approx(expected, abs=SPEED_CHECK_TOLERANCE_S)
+
+
+# Session each layout's reference line was built from (see the line files).
+REFERENCE_SESSIONS = {
+    "aldeia-v1": RAW / "aldeia/2026-08-29/Leo Rabello_ADSv1_a_0182_027320.csv",
+    "aldeia-v3": RAW / "aldeia/2026-10-11/ADSv3_a_0209_027320.csv",
+    "kgv-7": RAW / "kgv/2026-10-01/KGV 7_a_0205_027320.csv",
+    "schincariol-3": RAW / "schincariol/2026-09-27/Leo Rabello_Schincariol3_a_0202_027320.csv",
+}
+
+
+@pytest.mark.parametrize("track_id", sorted(REFERENCE_SESSIONS))
+def test_no_segment_boundary_sits_in_a_braking_zone(track_id):
+    # A boundary mid-braking splits a corner's braking zone, making both
+    # segments' times depend on exactly where each lap started to brake.
+    track = load_track(track_id)
+    line = load_reference_line(track)
+    pairs = [(p.station_m, lap.data["gps_accel_long_g"].to_numpy())
+             for lap, p, _ in _segment_table(REFERENCE_SESSIONS[track_id], track_id)]
+    grid, accel = station_profile(pairs, line.length_m)
+
+    for segment in track.segments[1:]:
+        assert np.interp(segment.start_m, grid, accel) >= BRAKING_G, segment
 
 
 @pytest.mark.parametrize(("path", "track_id", "beacons_on_line"), FILES)

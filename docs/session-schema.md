@@ -49,9 +49,11 @@ line after shifting) is an error, not a number.
 
 **Laps are cut after aligning.** A first cut on raw GPS finds the valid laps,
 their shift is estimated, and laps are cut again on shifted GPS, so they start
-at station 0 (within one sample) and lap cutting and projection agree. Lap
-times don't change, except for a standing start, where a 1.7 m shift moves
-the crossing by 0.25 s at walking pace.
+at station 0 (within one sample) and lap cutting and projection agree. Every
+command cuts laps this way. Lap times change by at most ~10 ms, except for a
+standing start, where a 1.7 m shift moves the crossing by 0.25 s at walking
+pace; a lap right at the length tolerance can change validity (Aldeia
+2026-10-11 0207 lap 6: 1036.3 m raw, 1035.6 m aligned, limit 1036 m).
 
 **Track edges** (later): the envelope of the innermost and outermost offsets
 ever driven at each station approximates usable width. Satellite imagery is a
@@ -79,11 +81,19 @@ kart, which is how the analyses separated kart from driver. Ids are per
 layout: `aldeia-v1:C4` and `aldeia-v3:C4` are different corners.
 
 Aldeia v1, Aldeia v3 and Schincariol use the segments of their hand
-analyses; every corner segment contains the apex found on the reference line.
-KGV has a draft from `detect_corners`/`propose_segments` (runs of curvature
-in one direction, radius under 80 m, turning at least 20°), not yet checked
-against how the driver counts corners. Flat-out kinks of a few degrees are
-not detected (Schincariol C6, Aldeia v3 C4) and are added by hand.
+analyses: each corner detected on the reference line falls in the corner
+segment of the same name. Two Aldeia v3 boundaries were moved 3-7 m earlier
+to where braking starts. KGV has a draft from `shave propose-segments`, not
+yet checked against how the driver counts corners: corners are runs of
+curvature in one direction (radius under 80 m, turning at least 20°), each
+corner segment holds exactly its own apex, and boundaries that land in a
+braking zone move back to where braking starts. Flat-out kinks of a few
+degrees are not detected (Schincariol C6, Aldeia v3 C4) and are added by
+hand; a corner across the finish line makes the proposal refuse.
+
+No boundary sits in a braking zone (median GPS deceleration below 0.15 g on
+the reference session): a boundary mid-braking would make two segments'
+times depend on where each lap started braking.
 
 Whether a segment is braked or flat out is not part of the layout: it
 depends on the kart, the tyres and the driver, and is measured per lap.

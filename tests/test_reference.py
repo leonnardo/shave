@@ -1,4 +1,5 @@
 import math
+from dataclasses import replace
 
 import numpy as np
 import pytest
@@ -90,3 +91,35 @@ def test_saved_line_loads_back(tmp_path):
 
     assert np.abs(loaded.east_m - line.east_m).max() < 0.01
     assert np.abs(loaded.north_m - line.north_m).max() < 0.01
+
+
+def test_shift_estimate_refuses_no_laps(tmp_path):
+    line = build_reference_line(valid_laps(tmp_path), LINE)
+
+    with pytest.raises(ValueError, match="at least one lap"):
+        estimate_shift(line, [])
+
+
+def test_shift_estimate_refuses_too_few_samples(tmp_path):
+    laps = valid_laps(tmp_path)
+    line = build_reference_line(laps, LINE)
+    chunk = replace(laps[0], data=laps[0].data.slice(0, 20))
+
+    with pytest.raises(ValueError, match="only 20 samples"):
+        estimate_shift(line, [chunk])
+
+
+def test_shift_estimate_refuses_a_shift_it_cannot_resolve(tmp_path):
+    line = build_reference_line(valid_laps(tmp_path, "ref.csv"), LINE)
+    far = valid_laps(tmp_path, "far.csv", shift_m=(20.0, 0.0))
+
+    with pytest.raises(ValueError):
+        estimate_shift(line, far)
+
+
+def test_loading_refuses_a_line_that_no_longer_starts_on_the_finish_line(tmp_path):
+    save_reference_line(build_reference_line(valid_laps(tmp_path), LINE), tmp_path / "circle.line.csv", "test")
+    moved = replace(TRACK, finish_line=replace(LINE, lon_deg=LINE.lon_deg + 0.0001))  # ~10 m east
+
+    with pytest.raises(ValueError, match="does not start on"):
+        load_reference_line(moved, tracks_dir=tmp_path)

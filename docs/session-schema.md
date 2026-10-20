@@ -15,7 +15,8 @@ need a position that means the same thing every lap.
 
 Each layout gets a **reference line**: a polyline, finish line to finish line,
 built once from the median of good laps and stored next to the layout file
-(`tracks/<layout>.line.csv`, one `lat_deg,lon_deg` row every ~1 m).
+(`tracks/<layout>.line.csv`: `station_m,lat_deg,lon_deg`, one row per metre;
+the closing segment back to the start is whatever is left, under 1.5 m).
 
 Every sample is projected onto it, giving:
 
@@ -24,18 +25,33 @@ Every sample is projected onto it, giving:
   direction of travel). This is what "1 m more inside at the apex" is measured
   in.
 
-Projection searches forward from the previous sample's station, so parts of
-the track that run close together (Aldeia) can't snap to the wrong stretch.
+Projection searches forward from the previous sample's station, so within a
+lap, parts of the track that run close together (Schincariol has two
+stretches 12.5 m apart) can't snap to the wrong one. A sample more than 15 m
+from the line (an off, the pit lane) falls back to searching the whole line
+and may land anywhere, so out-laps and in-laps are not projected.
 
 The reference line is a ruler, not a racing line: any stable line works, and
 once corners are drawn on it, it never changes. It is built automatically from
-the median of the valid laps of one session, recorded in the layout file.
+the median of the valid laps of one session, recorded in the line file's
+header. Rebuilding it from another session moves it (median 0.2-0.6 m, up to
+3 m in places, stations drifting up to 4 m by the end of the lap), which would
+move every corner: hence never rebuild.
 
-**Per-session alignment.** The Solo's GPS shifts up to ~1 m between sessions.
+**Per-session alignment.** The Solo's GPS shifts up to ~2 m between sessions,
+even on the same day (Schincariol 2026-09-27: 2.0 m).
 Before projecting, each session is translated by the shift that best fits its
 valid laps to the reference line (least squares on the lateral offsets). The
-shift is stored in the document; without it, a GPS shift reads as "drove 1 m
-wider".
+shift is stored in the document; without it, a GPS shift reads as "drove 2 m
+wider" (Schincariol 0203: p95 offset 2.5 m before, 1.0 m after). A shift that
+can't be trusted (too few samples, or most of the session still far from the
+line after shifting) is an error, not a number.
+
+**Known gap, to close with segments.** Laps are cut at the finish line on raw
+GPS, while stations come from shifted GPS, so a lap starts at station
+-(shift along the heading), up to ±2.6 m, not 0. Before segment times exist,
+laps will be cut on shifted GPS (cut, estimate the shift, cut again), so that
+segment times add up exactly to lap times.
 
 **Track edges** (later): the envelope of the innermost and outermost offsets
 ever driven at each station approximates usable width. Satellite imagery is a

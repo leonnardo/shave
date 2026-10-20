@@ -117,9 +117,16 @@ def test_every_valid_lap_projects_cleanly_onto_the_reference_line(
 ):
     shift, projected = _projected_laps(path, track_id)
 
+    length = load_reference_line(load_track(track_id)).length_m
     assert math.hypot(*shift) < 2.5  # GPS shift between sessions, seen up to ~2 m
     for _, p in projected:
-        assert np.diff(p.station_m).min() > -0.5  # never runs backwards
+        # A sample snapped to a nearby stretch shows up as a jump: never
+        # backwards, never more than a sample's travel (~1.5 m) forwards.
+        steps = np.diff(p.station_m)
+        assert steps.min() > -0.5
+        assert steps.max() < 3.0
+        # A lap runs line to line: its stations span the whole reference line.
+        assert p.station_m[-1] - p.station_m[0] == pytest.approx(length, abs=3.0)
         # Traffic and mistakes take a lap up to ~9 m wide for a few dozen
         # metres; beyond 12 m the sample snapped to the wrong stretch.
         assert np.abs(p.offset_m).max() < 12

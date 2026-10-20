@@ -35,6 +35,13 @@ MAX_SNAP_M = 15.0
 # session's GPS shift (offs, pit lane).
 ALIGN_CLIP_M = 5.0
 ALIGN_ITERATIONS = 3
+# A shift is only trusted when it rests on enough samples (a lap is ~1000 at
+# 20 Hz), spread in enough directions, and leaves most of the session near the
+# line. A wrong fit (too few samples, a straight stretch, a shift beyond the
+# clip distance) fails one of these instead of returning a plausible number.
+MIN_ALIGN_SAMPLES = 500
+MAX_ALIGN_CONDITION = 100.0
+MIN_ALIGN_NEAR_FRACTION = 0.8
 
 
 @dataclass(frozen=True)
@@ -137,7 +144,11 @@ def estimate_shift(line: ReferenceLine, laps: Sequence[Lap]) -> tuple[float, flo
     in every direction pin down a pure translation. Driving wider or tighter
     than the reference averages out over the lap only roughly, so expect
     ~0.2 m of error on top of the GPS shift being corrected.
+
+    Raises ValueError when the fit can't be trusted (see MIN_ALIGN_* above).
     """
+    if not laps:
+        raise ValueError("need at least one lap to estimate a GPS shift")
     origin = (line.origin_lat_deg, line.origin_lon_deg)
     tracks = [to_local(lap.data["lat_deg"], lap.data["lon_deg"], *origin) for lap in laps]
     dx = np.roll(line.east_m, -1) - line.east_m
@@ -145,8 +156,9 @@ def estimate_shift(line: ReferenceLine, laps: Sequence[Lap]) -> tuple[float, flo
     seg_len = np.hypot(dx, dy)
     right = np.stack([dy / seg_len, -dx / seg_len], axis=1)
 
+    total = sum(len(e) for e, _ in tracks)
     shift = np.zeros(2)
-    for _ in range(ALIGN_ITERATIONS):
+    for iteration in range(ALIGN_ITERATIONS + 1):
         normals, offsets = [], []
         for e, n in tracks:
             p = project_lap(line, e + shift[0], n + shift[1])
@@ -155,7 +167,24 @@ def estimate_shift(line: ReferenceLine, laps: Sequence[Lap]) -> tuple[float, flo
             offsets.append(p.offset_m[near])
         normal = np.concatenate(normals)
         offset = np.concatenate(offsets)
-        shift -= np.linalg.solve(normal.T @ normal, normal.T @ offset)
+        if len(offset) < MIN_ALIGN_SAMPLES:
+            raise ValueError(
+                f"only {len(offset)} samples within {ALIGN_CLIP_M:.0f} m of the line "
+                f"(need {MIN_ALIGN_SAMPLES})"
+            )
+        normal_matrix = normal.T @ normal
+        if np.linalg.cond(normal_matrix) > MAX_ALIGN_CONDITION:
+            raise ValueError("samples don't span enough directions to fix a shift")
+        if iteration == ALIGN_ITERATIONS:  # last pass only checks the fit
+            break
+        shift -= np.linalg.solve(normal_matrix, normal.T @ offset)
+
+    near_fraction = len(offset) / total
+    if near_fraction < MIN_ALIGN_NEAR_FRACTION:
+        raise ValueError(
+            f"after shifting ({shift[0]:+.1f}, {shift[1]:+.1f}) m only {near_fraction:.0%} "
+            f"of samples are within {ALIGN_CLIP_M:.0f} m of the line; wrong layout or GPS fault?"
+        )
     return float(shift[0]), float(shift[1])
 
 
@@ -173,8 +202,18 @@ def load_reference_line(track: Track, tracks_dir: Path = TRACKS_DIR) -> Referenc
         raise ValueError(f"no reference line for {track.id!r}; build it with `shave reference`")
     rows = [r for r in path.read_text(encoding="utf-8").splitlines() if r and not r.startswith("#")]
     lat, lon = np.array([[float(v) for v in r.split(",")[1:]] for r in rows[1:]]).T
-    origin = (track.finish_line.lat_deg, track.finish_line.lon_deg)
-    return ReferenceLine(*origin, *to_local(lat, lon, *origin))
+    line = track.finish_line
+    east, north = to_local(lat, lon, line.lat_deg, line.lon_deg)
+    # Stations count from vertex 0; if the layout's finish line moved since
+    # the line was built, every station would be silently off.
+    ux, uy = math.sin(math.radians(line.heading_deg)), math.cos(math.radians(line.heading_deg))
+    along, across = east[0] * ux + north[0] * uy, north[0] * ux - east[0] * uy
+    if abs(along) > STEP_M / 2 or abs(across) > line.half_width_m:
+        raise ValueError(
+            f"{path.name} does not start on {track.id}'s finish line "
+            f"({along:+.1f} m along, {across:+.1f} m across); was the line rebuilt?"
+        )
+    return ReferenceLine(line.lat_deg, line.lon_deg, east, north)
 
 
 def _nearest(candidates, px, py, ax, ay, dx, dy, seg_len):

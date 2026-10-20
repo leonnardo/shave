@@ -142,12 +142,17 @@ JSON before compression. Small enough to load whole in the browser.
 1. **Reference line**: automatic, median of the valid laps of one session per
    layout, frozen once corners are drawn.
 2. **Brake/throttle** come from GPS acceleration (thresholds 0.25 g / 0.05 g,
-   constants versioned with `shave_version`). The Solo's accelerometer is
-   mounted tilted (+0.30 g bias at Aldeia 11/10, axis likely swapped at
-   Schincariol) and carries ~10× the GPS noise at 20 Hz. Calibrating its
-   orientation against GPS and fusing both (complementary filter, zero-phase
-   since we run offline) is an experiment, kept only if brake points become
-   more consistent lap to lap. Higher-rate exports (≥ 25 Hz) to be tested.
-3. **Turn-in** comes from the gyro (`YawRate`), the closest thing to a
-   steering sensor.
-4. **Driver identity**: free text in `notes.driver` for now.
+   constants versioned with `shave_version`). Tested 2026-10-19 on 10 sessions
+   exported at 100 Hz: the Solo's accelerometer is mounted tilted and its
+   calibration is unstable between sessions; neither it nor a GPS+IMU fusion
+   made brake points more consistent (brake-start spread across laps 4.0 m
+   GPS-only vs 4.5 m at best fused, 10-15 m IMU alone).
+3. **Turn-in** comes from GPS yaw rate (lateral acceleration / speed): its
+   onset spreads 3.1 m lap to lap, against ~10 m for the logger's gyro
+   (`YawRate`). Heading rate, when needed, is computed from positions; the
+   `GPS Heading` channel's derivative doesn't track it.
+4. **Export rate**: 20 Hz. The Solo samples GPS at 25 Hz and the IMU/gyro at
+   50 Hz; Race Studio's 20 Hz export is a plain decimation of its 100 Hz one,
+   lap times agree within 1 ms, and nothing above 20 Hz proved useful. Files
+   are 5× smaller.
+5. **Driver identity**: free text in `notes.driver` for now.

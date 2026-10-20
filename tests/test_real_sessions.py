@@ -12,7 +12,8 @@ import pytest
 from shave.aim import read_session
 from shave.geo import to_local
 from shave.laps import LapStatus, check_lap, split_laps
-from shave.reference import estimate_shift, load_reference_line, project_lap
+from shave.reference import align_session, estimate_shift, load_reference_line, project_lap
+from shave.segments import segment_times
 from shave.tracks import load_track
 
 RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
@@ -149,3 +150,60 @@ def test_slow_corners_sit_where_the_hand_analyses_put_them(path, track_id, beaco
             speed = lap.data["speed_kmh"].to_numpy()
             minima.append(p.station_m[near][np.argmin(speed[near])])
         assert np.median(minima) == pytest.approx(expected_m, abs=CORNER_TOLERANCE_M), corner
+
+
+# Ideal lap (sum of each segment's best over the clean laps, at most 2% over
+# the median) as rounded in the hand analyses, which used the same segments.
+KNOWN_IDEAL_S = {
+    "Leo Rabello_ADSv1_a_0181_027320.csv": 46.1,
+    "Leo Rabello_ADSv1_a_0182_027320.csv": 46.4,
+    "Leo Rabello_ADSv1_a_0183_027320.csv": 46.4,
+    "Leo Rabello_ADSv1_a_0185_027320.csv": 47.9,
+    "ADSv3_a_0207_027320.csv": 51.2,
+    "ADSv3_a_0208_027320.csv": 50.8,
+    "ADSv3_a_0209_027320.csv": 50.3,
+    "ADSv3_a_0210_027320.csv": 51.2,
+}
+# The analyses round to 0.1 s ("≈") and cut laps slightly differently.
+IDEAL_TOLERANCE_S = 0.2
+
+
+def _segment_table(path, track_id):
+    track = load_track(track_id)
+    line = load_reference_line(track)
+    session, _ = align_session(read_session(path), track, line)
+    rows = []
+    for lap in split_laps(session, track):
+        if check_lap(lap, track).status != LapStatus.VALID:
+            continue
+        east, north = to_local(lap.data["lat_deg"], lap.data["lon_deg"],
+                               track.finish_line.lat_deg, track.finish_line.lon_deg)
+        p = project_lap(line, east, north)
+        rows.append((lap, p, segment_times(lap, p, track.segments)))
+    return rows
+
+
+@pytest.mark.parametrize(("path", "track_id", "beacons_on_line"), FILES)
+def test_aligned_laps_start_on_the_line_and_their_segments_add_up(path, track_id, beacons_on_line):
+    rows = _segment_table(path, track_id)
+
+    assert rows
+    for lap, p, times in rows:
+        # First sample past the line, at most one sample in; the finish line and
+        # the reference line's vertex 0 agree to a few centimetres.
+        assert -0.1 < p.station_m[0] < 1.5
+        assert sum(times) == pytest.approx(lap.time_s, abs=1e-6)
+        assert min(times) > 0.5
+
+
+@pytest.mark.parametrize(("path", "track_id", "beacons_on_line"), FILES)
+def test_ideal_lap_matches_the_hand_analysis(path, track_id, beacons_on_line):
+    if path.name not in KNOWN_IDEAL_S:
+        pytest.skip("no reference ideal lap")
+    rows = _segment_table(path, track_id)
+    lap_times = np.array([lap.time_s for lap, _, _ in rows])
+    clean = lap_times <= np.median(lap_times) * 1.02
+    ideal = np.array([times for _, _, times in rows])[clean].min(axis=0).sum()
+
+    assert ideal == pytest.approx(KNOWN_IDEAL_S[path.name], abs=IDEAL_TOLERANCE_S)
+

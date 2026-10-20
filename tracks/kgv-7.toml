@@ -9,3 +9,46 @@ length_tolerance_m = 20
 lat_deg = -23.604949
 lon_deg = -46.836279
 heading_deg = 342.4
+
+# DRAFT, not validated by the driver: proposed by detect_corners/propose_segments
+# from the reference line's curvature. Corner numbering may not match how the
+# track or the driver counts them. R0 runs from the finish line to the first corner; corners include their braking zone.
+[[segment]]
+id = "R0"
+start_m = 0
+[[segment]]
+id = "C1"
+start_m = 46
+[[segment]]
+id = "C2"
+start_m = 146
+[[segment]]
+id = "C3"
+start_m = 189
+[[segment]]
+id = "C4"
+start_m = 290
+[[segment]]
+id = "C5"
+start_m = 367
+[[segment]]
+id = "C6"
+start_m = 481
+[[segment]]
+id = "C7"
+start_m = 545
+[[segment]]
+id = "C8"
+start_m = 592
+[[segment]]
+id = "C9"
+start_m = 631
+[[segment]]
+id = "C10"
+start_m = 724
+[[segment]]
+id = "C11"
+start_m = 852
+[[segment]]
+id = "RP"
+start_m = 938

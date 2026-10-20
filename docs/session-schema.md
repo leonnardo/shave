@@ -47,11 +47,11 @@ wider" (Schincariol 0203: p95 offset 2.5 m before, 1.0 m after). A shift that
 can't be trusted (too few samples, or most of the session still far from the
 line after shifting) is an error, not a number.
 
-**Known gap, to close with segments.** Laps are cut at the finish line on raw
-GPS, while stations come from shifted GPS, so a lap starts at station
--(shift along the heading), up to ±2.6 m, not 0. Before segment times exist,
-laps will be cut on shifted GPS (cut, estimate the shift, cut again), so that
-segment times add up exactly to lap times.
+**Laps are cut after aligning.** A first cut on raw GPS finds the valid laps,
+their shift is estimated, and laps are cut again on shifted GPS, so they start
+at station 0 (within one sample) and lap cutting and projection agree. Lap
+times don't change, except for a standing start, where a 1.7 m shift moves
+the crossing by 0.25 s at walking pace.
 
 **Track edges** (later): the envelope of the innermost and outermost offsets
 ever driven at each station approximates usable width. Satellite imagery is a
@@ -62,24 +62,31 @@ visual background only: it is offset by metres and can't be trusted at the
 together (time, speed, position). It is the comparison target for deltas and
 the map overlay, derived from the document like the ideal lap.
 
-## 2. Corners live in the layout file, by station
+## 2. Segments live in the layout file, by station
 
 ```toml
-[[corner]]
-id = "C4"            # stable name, used across sessions of this layout
-kind = "freio"        # "freio" | "de_pe"
-entry_m = 420         # segment boundaries; consecutive segments tile the lap
-apex_m = 450
-exit_m = 480
+[[segment]]
+id = "C4"        # stable name, used across sessions of this layout
+start_m = 480    # ends where the next segment starts
 ```
 
-Segments between corners are straights (`R1`, `R2`, ...), so a lap is fully
-tiled and segment times add up to the lap time. Corner ids are per layout:
-`aldeia-v1:C4` and `aldeia-v3:C4` are different corners.
+Segments tile the lap: the first (`R0`) starts at the finish line, the last
+ends there, so segment times add up to the lap time exactly. A corner's
+segment starts where the previous one ends, so it includes its braking zone
+and runs until the next corner (or straight) begins. Long straights are
+segments of their own (`RO`, `RB`, `RP`...): time there depends mostly on the
+kart, which is how the analyses separated kart from driver. Ids are per
+layout: `aldeia-v1:C4` and `aldeia-v3:C4` are different corners.
 
-Initial definitions come from the hand analyses (Aldeia v1 and v3 have all
-apexes; Schincariol has only C1-C10 roughly) and get redrawn on the reference
-line.
+Aldeia v1, Aldeia v3 and Schincariol use the segments of their hand
+analyses; every corner segment contains the apex found on the reference line.
+KGV has a draft from `detect_corners`/`propose_segments` (runs of curvature
+in one direction, radius under 80 m, turning at least 20°), not yet checked
+against how the driver counts corners. Flat-out kinks of a few degrees are
+not detected (Schincariol C6, Aldeia v3 C4) and are added by hand.
+
+Whether a segment is braked or flat out is not part of the layout: it
+depends on the kart, the tyres and the driver, and is measured per lap.
 
 ## 3. Session document
 
@@ -116,7 +123,7 @@ line.
           "brake_peak_g": 0.61,
           "release_station_m": 445.0,     // last decel before the minimum
           "throttle_station_m": 455.0,    // start of sustained accel > 0.05 g
-          "apex_offset_m": -0.4           // offset at apex_m
+          "min_offset_m": -0.4            // offset where speed is lowest
         }
       ]
     }

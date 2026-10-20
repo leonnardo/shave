@@ -83,13 +83,16 @@ layout: `aldeia-v1:C4` and `aldeia-v3:C4` are different corners.
 Aldeia v1, Aldeia v3 and Schincariol use the segments of their hand
 analyses: each corner detected on the reference line falls in the corner
 segment of the same name. Two Aldeia v3 boundaries were moved 3-7 m earlier
-to where braking starts. KGV has a draft from `shave propose-segments`, not
-yet checked against how the driver counts corners: corners are runs of
+to where braking starts. KGV (traçado 101 invertido) is
+numbered by the driver: 14 corners, boundaries at each change of direction or
+the straightest point between two corners turning the same way. For a new
+layout, `shave propose-segments` drafts segments: corners are runs of
 curvature in one direction (radius under 80 m, turning at least 20°), each
 corner segment holds exactly its own apex, and boundaries that land in a
 braking zone move back to where braking starts. Flat-out kinks of a few
-degrees are not detected (Schincariol C6, Aldeia v3 C4) and are added by
-hand; a corner across the finish line makes the proposal refuse.
+degrees are not detected (Schincariol C6, Aldeia v3 C4, KGV C11 and C13),
+nor two same-direction corners that run into each other (KGV C3-C4); the
+driver's numbering wins; a corner across the finish line makes the proposal refuse.
 
 No boundary sits in a braking zone (median GPS deceleration below 0.15 g on
 the reference session): a boundary mid-braking would make two segments'

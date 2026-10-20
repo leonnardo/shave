@@ -83,13 +83,14 @@ def test_proposal_refuses_a_corner_across_the_finish_line(tmp_path):
 
 
 # Detected corners per layout, in order: the segment each apex must fall in.
-# Hand-analysis layouts must agree with the analyses' numbering; flat-out kinks
-# of a few degrees (Schincariol C6, Aldeia v3 C4) are not detected.
+# The numbering is the driver's (hand analyses, or the driver for KGV).
+# Not detected: flat-out kinks (Schincariol C6, Aldeia v3 C4, KGV C11 and
+# C13) and KGV C4, which runs into C3 as one long left.
 APEX_SEGMENTS = {
     "aldeia-v1": ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"],
     "aldeia-v3": ["C1", "C2", "C3", "C5", "C6", "C7", "C8-9", "C8-9"],
     "schincariol-3": ["C1", "C2", "C3", "C4", "C5", "C7", "C8", "C9", "C10"],
-    "kgv-7": [f"C{n}" for n in range(1, 12)],
+    "kgv-101-invertido": ["C1", "C2", "C3", "C5", "C6", "C7", "C8", "C9", "C10", "C12", "C14"],
 }
 
 

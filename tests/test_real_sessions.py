@@ -22,7 +22,7 @@ RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
 SESSIONS = {
     "aldeia/2026-08-29": ("aldeia-v1", False),  # logger line was wrong that day
     "aldeia/2026-10-11": ("aldeia-v3", True),
-    "kgv/2026-10-01": ("kgv-7", True),
+    "kgv/2026-10-01": ("kgv-101-invertido", True),
     "schincariol/2026-09-27": ("schincariol-3", True),  # beacons also mark sectors
 }
 
@@ -225,7 +225,7 @@ def test_segment_times_agree_with_distance_over_speed(path, track_id, beacons_on
 REFERENCE_SESSIONS = {
     "aldeia-v1": RAW / "aldeia/2026-08-29/Leo Rabello_ADSv1_a_0182_027320.csv",
     "aldeia-v3": RAW / "aldeia/2026-10-11/ADSv3_a_0209_027320.csv",
-    "kgv-7": RAW / "kgv/2026-10-01/KGV 7_a_0205_027320.csv",
+    "kgv-101-invertido": RAW / "kgv/2026-10-01/KGV 7_a_0205_027320.csv",
     "schincariol-3": RAW / "schincariol/2026-09-27/Leo Rabello_Schincariol3_a_0202_027320.csv",
 }
 

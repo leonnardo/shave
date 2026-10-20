@@ -9,3 +9,47 @@ length_tolerance_m = 20
 lat_deg = -23.248028
 lon_deg = -47.342057
 heading_deg = 257.4
+
+# Segments from the hand analysis of 2026-09-27 (its stations were measured on
+# its own reference lap; every corner here contains the apex found on this
+# layout's reference line). R0 runs from the finish line to the first corner; corners include their braking zone.
+# RO = reta oposta, RB = reta dos boxes.
+[[segment]]
+id = "R0"
+start_m = 0
+[[segment]]
+id = "C1"
+start_m = 112
+[[segment]]
+id = "C2"
+start_m = 190
+[[segment]]
+id = "C3"
+start_m = 238
+[[segment]]
+id = "RO"
+start_m = 330
+[[segment]]
+id = "C4"
+start_m = 480
+[[segment]]
+id = "C5"
+start_m = 600
+[[segment]]
+id = "C6"
+start_m = 642
+[[segment]]
+id = "C7"
+start_m = 736
+[[segment]]
+id = "C8"
+start_m = 880
+[[segment]]
+id = "C9"
+start_m = 940
+[[segment]]
+id = "C10"
+start_m = 1012
+[[segment]]
+id = "RB"
+start_m = 1135

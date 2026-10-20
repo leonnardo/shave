@@ -10,13 +10,15 @@ works, and once corners are drawn on it, it must not change.
 import math
 import warnings
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
+import polars as pl
 
+from shave.aim import Session
 from shave.geo import to_latlon, to_local
-from shave.laps import Lap
+from shave.laps import Lap, LapStatus, check_lap, split_laps
 from shave.tracks import TRACKS_DIR, FinishLine, Track
 
 STEP_M = 1.0
@@ -186,6 +188,26 @@ def estimate_shift(line: ReferenceLine, laps: Sequence[Lap]) -> tuple[float, flo
             f"of samples are within {ALIGN_CLIP_M:.0f} m of the line; wrong layout or GPS fault?"
         )
     return float(shift[0]), float(shift[1])
+
+
+def align_session(
+    session: Session, track: Track, line: ReferenceLine
+) -> tuple[Session, tuple[float, float]]:
+    """The session with its GPS positions shifted to fit the reference line.
+
+    Laps cut from the aligned session start at station ~0, so lap cutting and
+    projection agree and segment times add up to lap times. The shift is
+    estimated on the valid laps of a first cut on raw GPS; it moves every
+    crossing by about the same amount, so which laps are valid doesn't change.
+    """
+    track_laps = split_laps(session, track)
+    valid = [lap for lap in track_laps if check_lap(lap, track).status == LapStatus.VALID]
+    shift = estimate_shift(line, valid)
+    origin = (line.origin_lat_deg, line.origin_lon_deg)
+    east, north = to_local(session.data["lat_deg"], session.data["lon_deg"], *origin)
+    lat, lon = to_latlon(east + shift[0], north + shift[1], *origin)
+    data = session.data.with_columns(pl.Series("lat_deg", lat), pl.Series("lon_deg", lon))
+    return replace(session, data=data), shift
 
 
 def save_reference_line(line: ReferenceLine, path: Path, provenance: str) -> None:

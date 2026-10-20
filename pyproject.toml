@@ -3,7 +3,10 @@ name = "shave"
 version = "0.1.0"
 description = "Deterministic analysis of AiM Solo kart telemetry"
 requires-python = ">=3.12"
-dependencies = ["polars>=1.0"]
+dependencies = [
+    "numpy>=2.5.4",
+    "polars>=1.0",
+]
 
 [project.scripts]
 shave = "shave.cli:main"

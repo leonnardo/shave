@@ -14,6 +14,7 @@ from enum import StrEnum
 import polars as pl
 
 from shave.aim import Session
+from shave.geo import to_local
 from shave.tracks import FinishLine, Track
 
 # A sample with accuracy at or below this (mm) and at least this many
@@ -29,8 +30,6 @@ MAX_STEP_M = 5.0
 # A crossing closer than this fraction of the layout length to the previous
 # one is ignored (e.g. a spin right after the line).
 MIN_LAP_FRACTION = 0.5
-
-EARTH_RADIUS_M = 6_371_008.8
 
 
 class LapStatus(StrEnum):
@@ -158,20 +157,10 @@ def check_lap(
 def _line_coordinates(
     lat_deg: list[float], lon_deg: list[float], line: FinishLine
 ) -> tuple[list[float], list[float]]:
-    """Meters along the direction of travel and across it, from the line point.
-
-    Equirectangular projection: exact enough over a kart track.
-    """
-    k = math.pi / 180 * EARTH_RADIUS_M
-    cos_lat = math.cos(math.radians(line.lat_deg))
+    """Meters along the direction of travel and across it, from the line point."""
+    x, y = to_local(lat_deg, lon_deg, line.lat_deg, line.lon_deg)
     ux, uy = math.sin(math.radians(line.heading_deg)), math.cos(math.radians(line.heading_deg))
-    along, across = [], []
-    for lat, lon in zip(lat_deg, lon_deg):
-        x = (lon - line.lon_deg) * cos_lat * k
-        y = (lat - line.lat_deg) * k
-        along.append(x * ux + y * uy)
-        across.append(y * ux - x * uy)
-    return along, across
+    return (x * ux + y * uy).tolist(), (y * ux - x * uy).tolist()
 
 
 def _lerp(a: float, b: float, f: float) -> float:

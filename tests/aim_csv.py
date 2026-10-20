@@ -1,6 +1,7 @@
 """Builds small synthetic AiM Race Studio CSV exports for tests."""
 
 import math
+from collections.abc import Callable
 from pathlib import Path
 
 from shave.aim import CHANNELS
@@ -78,13 +79,17 @@ def write_circle_csv(
     start_angle_rad: float,
     duration_s: float,
     clockwise: bool = False,
+    radial_offset_m: Callable[[float], float] = lambda t: 0.0,
+    shift_m: tuple[float, float] = (0.0, 0.0),
     sample_rate_hz: int = 20,
     **kwargs,
 ) -> Path:
     """A kart driving a circle at constant speed.
 
     Angle 0 is the southernmost point; counterclockwise travel heads east
-    there, clockwise heads west.
+    there, clockwise heads west. `radial_offset_m(t)` moves the kart outwards
+    of the circle at time t; `shift_m` (east, north) shifts every position, as
+    a GPS offset would.
     """
     r = circumference_m / (2 * math.pi)
     k = math.pi / 180 * EARTH_RADIUS_M
@@ -95,8 +100,9 @@ def write_circle_csv(
     for i in range(n):
         t = i / sample_rate_hz
         theta = start_angle_rad + sign * speed_ms * t / r
-        lat.append(center[0] + (-r * math.cos(theta)) / k)
-        lon.append(center[1] + (r * math.sin(theta)) / (k * cos_lat))
+        radius = r + radial_offset_m(t)
+        lat.append(center[0] + (-radius * math.cos(theta) + shift_m[1]) / k)
+        lon.append(center[1] + (radius * math.sin(theta) + shift_m[0]) / (k * cos_lat))
         dist.append(speed_ms * t)
     return write_aim_csv(
         path, [0.0] * n, beacons_s=[], lat_deg=lat, lon_deg=lon, distance_m=dist,

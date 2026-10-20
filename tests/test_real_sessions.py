@@ -3,12 +3,16 @@
 Skipped when the data isn't there.
 """
 
+import math
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from shave.aim import read_session
+from shave.geo import to_local
 from shave.laps import LapStatus, check_lap, split_laps
+from shave.reference import estimate_shift, load_reference_line, project_lap
 from shave.tracks import load_track
 
 RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
@@ -80,3 +84,61 @@ def test_best_lap_matches_the_hand_analysis(path, track_id, beacons_on_line):
              if check_lap(lap, track).status == LapStatus.VALID]
 
     assert min(valid) == pytest.approx(KNOWN_BEST_S[path.name], abs=TIMING_TOLERANCE_S)
+
+
+# Slow corners: apex distance from the line in the hand analyses. Minimum
+# speed comes at or after the apex (up to ~15 m later in Schincariol's C10
+# hairpin), so it locates the corner, not the apex.
+SLOW_CORNERS_M = {
+    "aldeia-v1": {"C4": 450, "C7": 674},
+    "aldeia-v3": {"C5": 350, "C6": 481},
+    "schincariol-3": {"C4": 535, "C10": 1090},
+}
+CORNER_TOLERANCE_M = 20
+
+
+def _projected_laps(path, track_id):
+    track = load_track(track_id)
+    line = load_reference_line(track)
+    laps = [lap for lap in split_laps(read_session(path), track)
+            if check_lap(lap, track).status == LapStatus.VALID]
+    shift = estimate_shift(line, laps)
+    projected = []
+    for lap in laps:
+        east, north = to_local(lap.data["lat_deg"], lap.data["lon_deg"],
+                               track.finish_line.lat_deg, track.finish_line.lon_deg)
+        projected.append((lap, project_lap(line, east + shift[0], north + shift[1])))
+    return shift, projected
+
+
+@pytest.mark.parametrize(("path", "track_id", "beacons_on_line"), FILES)
+def test_every_valid_lap_projects_cleanly_onto_the_reference_line(
+    path, track_id, beacons_on_line
+):
+    shift, projected = _projected_laps(path, track_id)
+
+    assert math.hypot(*shift) < 2.5  # GPS shift between sessions, seen up to ~2 m
+    for _, p in projected:
+        assert np.diff(p.station_m).min() > -0.5  # never runs backwards
+        # Traffic and mistakes take a lap up to ~9 m wide for a few dozen
+        # metres; beyond 12 m the sample snapped to the wrong stretch.
+        assert np.abs(p.offset_m).max() < 12
+    # A different driver's line differs too: S2 at Aldeia 2026-10-11 runs
+    # ~3 m (p95) from a reference built on S3, consistently on every lap.
+    typical = np.median([np.percentile(np.abs(p.offset_m), 95) for _, p in projected])
+    assert typical < 4.0
+
+
+@pytest.mark.parametrize(("path", "track_id", "beacons_on_line"), FILES)
+def test_slow_corners_sit_where_the_hand_analyses_put_them(path, track_id, beacons_on_line):
+    if track_id not in SLOW_CORNERS_M:
+        pytest.skip("no hand analysis for this layout")
+    _, projected = _projected_laps(path, track_id)
+
+    for corner, expected_m in SLOW_CORNERS_M[track_id].items():
+        minima = []
+        for lap, p in projected:
+            near = np.abs(p.station_m - expected_m) < 30
+            speed = lap.data["speed_kmh"].to_numpy()
+            minima.append(p.station_m[near][np.argmin(speed[near])])
+        assert np.median(minima) == pytest.approx(expected_m, abs=CORNER_TOLERANCE_M), corner

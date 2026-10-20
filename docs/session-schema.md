@@ -1,6 +1,6 @@
 # Session schema (draft)
 
-Status: proposal, not implemented.
+Status: agreed 2026-10-19; implementation starting with the reference line.
 
 `shave` turns one logger export into one **session document** (JSON). The web
 app stores and draws these documents; an agent reads them to write an
@@ -26,6 +26,25 @@ Every sample is projected onto it, giving:
 
 Projection searches forward from the previous sample's station, so parts of
 the track that run close together (Aldeia) can't snap to the wrong stretch.
+
+The reference line is a ruler, not a racing line: any stable line works, and
+once corners are drawn on it, it never changes. It is built automatically from
+the median of the valid laps of one session, recorded in the layout file.
+
+**Per-session alignment.** The Solo's GPS shifts up to ~1 m between sessions.
+Before projecting, each session is translated by the shift that best fits its
+valid laps to the reference line (least squares on the lateral offsets). The
+shift is stored in the document; without it, a GPS shift reads as "drove 1 m
+wider".
+
+**Track edges** (later): the envelope of the innermost and outermost offsets
+ever driven at each station approximates usable width. Satellite imagery is a
+visual background only: it is offset by metres and can't be trusted at the
+±0.5 m these comparisons need.
+
+**Ideal line** is a different thing: the best segments of a session stitched
+together (time, speed, position). It is the comparison target for deltas and
+the map overlay, derived from the document like the ideal lap.
 
 ## 2. Corners live in the layout file, by station
 
@@ -53,6 +72,7 @@ line.
   "schema_version": 1,
   "shave_version": "0.2.0",          // code that produced the numbers
   "layout": "aldeia-v1",
+  "alignment": { "east_m": 0.42, "north_m": -0.18 },  // GPS shift applied
   "source": {
     "file": "Leo Rabello_ADSv1_a_0181_027320.csv",
     "sha256": "…",                    // same file → same session id
@@ -117,13 +137,17 @@ JSON before compression. Small enough to load whole in the browser.
 - **Raw samples.** The original export stays in storage (R2); the document is
   rebuilt from it whenever the code changes.
 
-## 5. Open questions
+## 5. Decisions
 
-1. **Reference line source.** Built automatically from the best session we
-   have per layout, or picked by hand? Proposal: automatic (median of valid
-   laps of a chosen session), session recorded in the layout file.
-2. **Brake/throttle thresholds** (0.25 g / 0.05 g) are the ones used in the
-   Aldeia 11/10 analysis; they stay constants in code, versioned with
-   `shave_version`.
-3. **Driver identity.** Free text in `notes.driver` for now; a proper
-   people table only when the app has more than one user.
+1. **Reference line**: automatic, median of the valid laps of one session per
+   layout, frozen once corners are drawn.
+2. **Brake/throttle** come from GPS acceleration (thresholds 0.25 g / 0.05 g,
+   constants versioned with `shave_version`). The Solo's accelerometer is
+   mounted tilted (+0.30 g bias at Aldeia 11/10, axis likely swapped at
+   Schincariol) and carries ~10× the GPS noise at 20 Hz. Calibrating its
+   orientation against GPS and fusing both (complementary filter, zero-phase
+   since we run offline) is an experiment, kept only if brake points become
+   more consistent lap to lap. Higher-rate exports (≥ 25 Hz) to be tested.
+3. **Turn-in** comes from the gyro (`YawRate`), the closest thing to a
+   steering sensor.
+4. **Driver identity**: free text in `notes.driver` for now.

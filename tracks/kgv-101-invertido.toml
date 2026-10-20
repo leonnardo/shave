@@ -1,0 +1,68 @@
+name = "Granja Viana, traçado 101 invertido (\"KGV 7\" no AiM)"
+# Measured, not official: median of 24 complete laps, 2026-10-01.
+# No public length found per layout; the 1150 m quoted for KGV is not this layout.
+expected_length_m = 966
+length_tolerance_m = 20
+
+# Median of the logger's beacon crossings on 2026-10-01 (26 crossings, spread < 1 m).
+[finish_line]
+lat_deg = -23.604949
+lon_deg = -46.836279
+heading_deg = 342.4
+
+
+# Corners numbered by the driver (14, counting the near-straight kinks C11
+# and C13). Boundaries at the change of direction, or the straightest point
+# between two corners turning the same way (C3/C4, C10/C11, C11/C12), never in
+# a braking zone. Corners at ~102 (C1, esq), 146 (C2, dir), 192 (C3, esq),
+# 240 (C4, esq), 288 (C5, dir), 438 (C6, dir), 498 (C7, dir), 546 (C8, esq),
+# 588 (C9, dir), 636 (C10, esq), 666-738 (C11, esq, radius 60-180 m),
+# 798 (C12, esq), 840 (C13, dir), 864 (C14, esq).
+[[segment]]
+id = "R0"
+start_m = 0
+[[segment]]
+id = "C1"
+start_m = 60
+[[segment]]
+id = "C2"
+start_m = 123
+[[segment]]
+id = "C3"
+start_m = 162
+[[segment]]
+id = "C4"
+start_m = 216
+[[segment]]
+id = "C5"
+start_m = 270
+[[segment]]
+id = "C6"
+start_m = 405
+[[segment]]
+id = "C7"
+start_m = 462
+[[segment]]
+id = "C8"
+start_m = 522
+[[segment]]
+id = "C9"
+start_m = 567
+[[segment]]
+id = "C10"
+start_m = 609
+[[segment]]
+id = "C11"
+start_m = 663
+[[segment]]
+id = "C12"
+start_m = 756
+[[segment]]
+id = "C13"
+start_m = 831
+[[segment]]
+id = "C14"
+start_m = 852
+[[segment]]
+id = "RP"
+start_m = 924
